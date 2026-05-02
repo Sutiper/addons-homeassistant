@@ -1,11 +1,7 @@
-FROM portainer/agent:latest
+ARG BUILD_FROM
+FROM portainer/agent:latest AS portainer_src
 
-LABEL \
-  io.hass.version="latest" \
-  io.hass.type="app" \
-  io.hass.arch="aarch64|amd64"
-
+FROM $BUILD_FROM
+COPY --from=portainer_src /agent /agent
 COPY run.sh /run.sh
 RUN chmod a+x /run.sh
-
-CMD ["/run.sh"]
