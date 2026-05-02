@@ -2,7 +2,7 @@ name: "Portainer Business Edition"
 description: >-
   Portainer Business Edition (EE) — Plateforme de gestion de conteneurs Docker
   avec interface web complète. Utilise l'image officielle portainer/portainer-ee:sts.
-version: "sts"
+version: "2.40.0"
 slug: "portainer_ee"
 url: "https://www.portainer.io/"
 arch:
@@ -30,8 +30,5 @@ webui: "http://[HOST]:[PORT:9000]"
 map:
   - type: data
     read_only: false
-
-options: {}
-schema: {}
 
 stage: stable
