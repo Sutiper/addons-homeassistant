@@ -14,8 +14,6 @@ startup: services
 boot: auto
 init: false
 
-image: "portainer/agent:latest"
-
 docker_api: true
 
 map:

@@ -13,8 +13,6 @@ startup: services
 boot: auto
 init: false
 
-image: "portainer/portainer-ee:sts"
-
 ports:
   9000/tcp: 9000
   9443/tcp: 9443
