@@ -19,8 +19,7 @@ image: "portainer/agent:latest"
 docker_api: true
 
 map:
-  - type: data
-    read_only: false
+  - data:rw
 
 options:
   portainer_url: "https://portainer.peda.ovh"

@@ -28,7 +28,6 @@ ports_description:
 webui: "http://[HOST]:[PORT:9000]"
 
 map:
-  - type: data
-    read_only: false
+  - data:rw
 
 stage: stable
