@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 ARG BUILD_FROM=portainer/portainer-ee:sts
-=======
-ARG BUILD_FROM
->>>>>>> c21932f888c0ab277c7b41bea086b5357c682a06
 FROM portainer/portainer-ee:sts AS portainer_src
 
 FROM $BUILD_FROM
