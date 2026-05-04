@@ -9,8 +9,9 @@ LABEL \
   io.hass.type="app" \
   io.hass.arch="aarch64|amd64"
 
-# Copie du binaire Agent depuis l'image officielle
-COPY --from=agent_src /agent /agent
+# Copie du répertoire /app qui contient le binaire agent
+# (l'image portainer/agent utilise WorkingDir=/app avec entrypoint ./agent)
+COPY --from=agent_src /app /app
 
 COPY run.sh /
 RUN chmod a+x /run.sh

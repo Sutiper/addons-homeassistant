@@ -34,4 +34,4 @@ fi
 bashio::log.info "Edge ID    : ${EDGE_ID}"
 bashio::log.info "Log level  : ${LOG_LEVEL}"
 
-exec /agent
+exec /app/agent

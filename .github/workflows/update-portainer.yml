@@ -1,0 +1,133 @@
+name: Auto-update Portainer versions
+
+on:
+  schedule:
+    # Tous les jours à 4h du matin
+    - cron: "0 4 * * *"
+  workflow_dispatch: # Permet de lancer manuellement
+
+jobs:
+  update-portainer-ee:
+    name: Check Portainer EE version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Get latest Portainer EE STS tag from Docker Hub
+        id: portainer_ee
+        run: |
+          # Récupère le digest du tag "sts" sur Docker Hub
+          DIGEST=$(curl -s "https://hub.docker.com/v2/repositories/portainer/portainer-ee/tags/sts" \
+            | jq -r '.digest' | cut -c8-15)
+          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "Digest actuel: ${DIGEST}"
+
+      - name: Get current version in config.yaml
+        id: current
+        run: |
+          VERSION=$(grep '^version:' portainer_ee/config.yaml | awk '{print $2}' | tr -d '"')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version actuelle: ${VERSION}"
+
+      - name: Read stored digest
+        id: stored
+        run: |
+          if [ -f .portainer_ee_digest ]; then
+            STORED=$(cat .portainer_ee_digest)
+          else
+            STORED=""
+          fi
+          echo "digest=${STORED}" >> $GITHUB_OUTPUT
+          echo "Digest stocké: ${STORED}"
+
+      - name: Bump version if digest changed
+        if: steps.portainer_ee.outputs.digest != steps.stored.outputs.digest
+        run: |
+          OLD_VERSION="${{ steps.current.outputs.version }}"
+          # Incrémente le patch (1.0.0 → 1.0.1)
+          MAJOR=$(echo $OLD_VERSION | cut -d. -f1)
+          MINOR=$(echo $OLD_VERSION | cut -d. -f2)
+          PATCH=$(echo $OLD_VERSION | cut -d. -f3)
+          NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+
+          echo "Mise à jour: ${OLD_VERSION} → ${NEW_VERSION}"
+
+          # Met à jour config.yaml
+          sed -i "s/^version: \"${OLD_VERSION}\"/version: \"${NEW_VERSION}\"/" portainer_ee/config.yaml
+
+          # Met à jour le LABEL dans le Dockerfile
+          sed -i "s/io.hass.version=\"${OLD_VERSION}\"/io.hass.version=\"${NEW_VERSION}\"/" portainer_ee/Dockerfile
+
+          # Met à jour CHANGELOG.md
+          DATE=$(date +%Y-%m-%d)
+          sed -i "1s/^/## ${NEW_VERSION} — ${DATE}\n\n- Mise à jour automatique Portainer EE (STS)\n\n/" portainer_ee/CHANGELOG.md
+
+          # Sauvegarde le nouveau digest
+          echo "${{ steps.portainer_ee.outputs.digest }}" > .portainer_ee_digest
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add portainer_ee/config.yaml portainer_ee/Dockerfile portainer_ee/CHANGELOG.md .portainer_ee_digest
+          git diff --staged --quiet || git commit -m "chore: bump portainer_ee version (STS update)"
+          git push
+
+  update-portainer-agent:
+    name: Check Portainer Agent version
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Get latest Portainer Agent digest from Docker Hub
+        id: agent
+        run: |
+          DIGEST=$(curl -s "https://hub.docker.com/v2/repositories/portainer/agent/tags/latest" \
+            | jq -r '.digest' | cut -c8-15)
+          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "Digest actuel: ${DIGEST}"
+
+      - name: Get current version in config.yaml
+        id: current
+        run: |
+          VERSION=$(grep '^version:' portainer_agent/config.yaml | awk '{print $2}' | tr -d '"')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Read stored digest
+        id: stored
+        run: |
+          if [ -f .portainer_agent_digest ]; then
+            STORED=$(cat .portainer_agent_digest)
+          else
+            STORED=""
+          fi
+          echo "digest=${STORED}" >> $GITHUB_OUTPUT
+
+      - name: Bump version if digest changed
+        if: steps.agent.outputs.digest != steps.stored.outputs.digest
+        run: |
+          OLD_VERSION="${{ steps.current.outputs.version }}"
+          MAJOR=$(echo $OLD_VERSION | cut -d. -f1)
+          MINOR=$(echo $OLD_VERSION | cut -d. -f2)
+          PATCH=$(echo $OLD_VERSION | cut -d. -f3)
+          NEW_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+
+          echo "Mise à jour: ${OLD_VERSION} → ${NEW_VERSION}"
+
+          sed -i "s/^version: \"${OLD_VERSION}\"/version: \"${NEW_VERSION}\"/" portainer_agent/config.yaml
+          sed -i "s/io.hass.version=\"${OLD_VERSION}\"/io.hass.version=\"${NEW_VERSION}\"/" portainer_agent/Dockerfile
+
+          DATE=$(date +%Y-%m-%d)
+          sed -i "1s/^/## ${NEW_VERSION} — ${DATE}\n\n- Mise à jour automatique Portainer Agent\n\n/" portainer_agent/CHANGELOG.md
+
+          echo "${{ steps.agent.outputs.digest }}" > .portainer_agent_digest
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add portainer_agent/config.yaml portainer_agent/Dockerfile portainer_agent/CHANGELOG.md .portainer_agent_digest
+          git diff --staged --quiet || git commit -m "chore: bump portainer_agent version (latest update)"
+          git push
