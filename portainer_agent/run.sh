@@ -1,38 +1,37 @@
-#!/bin/sh
+#!/usr/bin/with-contenv bashio
 
-CONFIG=/data/options.json
+bashio::log.info "Démarrage de Portainer Edge Agent..."
 
-EDGE_KEY=$(jq -r '.edge_key' "$CONFIG")
-EDGE_ID=$(jq -r '.edge_id' "$CONFIG")
-EDGE_INSECURE_POLL=$(jq -r '.edge_insecure_poll' "$CONFIG")
-LOG_LEVEL=$(jq -r '.log_level' "$CONFIG")
+EDGE_KEY=$(bashio::config 'edge_key')
+EDGE_ID=$(bashio::config 'edge_id')
+EDGE_INSECURE_POLL=$(bashio::config 'edge_insecure_poll')
+LOG_LEVEL=$(bashio::config 'log_level')
 
-if [ -z "$EDGE_KEY" ] || [ "$EDGE_KEY" = "null" ] || [ "$EDGE_KEY" = "" ]; then
-  echo "ERREUR: edge_key est obligatoire."
-  echo "Génère-la dans Portainer > Environments > Add > Edge Agent Standard."
+if bashio::var.is_empty "${EDGE_KEY}"; then
+  bashio::log.fatal "edge_key est obligatoire."
+  bashio::log.fatal "Génère-la dans Portainer > Environments > Add > Edge Agent Standard."
   exit 1
 fi
 
-if [ -z "$EDGE_ID" ] || [ "$EDGE_ID" = "null" ] || [ "$EDGE_ID" = "" ]; then
-  echo "ERREUR: edge_id est obligatoire."
-  echo "Choisis un identifiant unique (ex: homeassistant-rpi5)."
+if bashio::var.is_empty "${EDGE_ID}"; then
+  bashio::log.fatal "edge_id est obligatoire."
+  bashio::log.fatal "Ex: homeassistant-rpi5"
   exit 1
 fi
 
 export EDGE=1
-export EDGE_KEY="$EDGE_KEY"
-export EDGE_ID="$EDGE_ID"
-export LOG_LEVEL="$LOG_LEVEL"
+export EDGE_KEY="${EDGE_KEY}"
+export EDGE_ID="${EDGE_ID}"
+export LOG_LEVEL="${LOG_LEVEL}"
 
-if [ "$EDGE_INSECURE_POLL" = "true" ]; then
+if bashio::var.true "${EDGE_INSECURE_POLL}"; then
   export EDGE_INSECURE_POLL=1
-  echo "ATTENTION: Mode insecure poll activé."
+  bashio::log.warning "Mode insecure poll activé (TLS non vérifié)."
 else
   export EDGE_INSECURE_POLL=0
 fi
 
-echo "Démarrage Portainer Edge Agent..."
-echo "Edge ID    : $EDGE_ID"
-echo "Log level  : $LOG_LEVEL"
+bashio::log.info "Edge ID    : ${EDGE_ID}"
+bashio::log.info "Log level  : ${LOG_LEVEL}"
 
 exec /agent

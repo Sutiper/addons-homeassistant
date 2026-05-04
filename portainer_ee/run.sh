@@ -1,5 +1,7 @@
-#!/bin/sh
-echo "Démarrage de Portainer Business Edition..."
+#!/usr/bin/with-contenv bashio
+
+bashio::log.info "Démarrage de Portainer Business Edition..."
+
 exec /portainer \
   --data /data \
   --bind :9000 \
