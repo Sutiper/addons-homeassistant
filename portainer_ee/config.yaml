@@ -1,31 +1,27 @@
 name: "Portainer Business Edition"
 description: >-
-  Portainer Business Edition (EE) — Plateforme de gestion de conteneurs Docker
-  avec interface web complète. Utilise l'image officielle portainer/portainer-ee:sts.
-version: "2.40.0"
+  Portainer Business Edition (EE) — Interface de gestion Docker complète
+  avec support Edge Agent, stacks, et gestion multi-environnement.
+version: "1.0.0"
 slug: "portainer_ee"
 url: "https://www.portainer.io/"
 arch:
   - amd64
   - aarch64
-
 startup: services
 boot: auto
 init: false
-
+docker_api: true
 ports:
   9000/tcp: 9000
   9443/tcp: 9443
   8000/tcp: 8000
-
 ports_description:
   9000/tcp: "Interface web HTTP"
   9443/tcp: "Interface web HTTPS"
   8000/tcp: "Port tunnel Edge Agent"
-
 webui: "http://[HOST]:[PORT:9000]"
-
 map:
-  - data:rw
-
+  - type: data
+    read_only: false
 stage: stable

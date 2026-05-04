@@ -1,36 +1,28 @@
 name: "Portainer Edge Agent"
 description: >-
-  Agent Edge Portainer (Standard) qui établit une connexion sécurisée vers un
-  serveur Portainer distant. Permet de gérer cet environnement Docker depuis
-  une instance Portainer centralisée (ex: portainer.peda.ovh).
-version: "2.40.0"
+  Agent Edge Portainer (Standard) — Se connecte à un serveur Portainer distant
+  pour gérer cet environnement Docker depuis une instance centralisée.
+version: "1.0.0"
 slug: "portainer_agent"
-url: "https://www.portainer.io/portainer-edge"
+url: "https://www.portainer.io/"
 arch:
   - amd64
   - aarch64
-
 startup: services
 boot: auto
 init: false
-
 docker_api: true
-
 map:
-  - data:rw
-
+  - type: data
+    read_only: false
 options:
-  portainer_url: "https://portainer.peda.ovh"
   edge_key: ""
   edge_id: ""
   edge_insecure_poll: false
   log_level: "INFO"
-
 schema:
-  portainer_url: url
   edge_key: str
   edge_id: str
   edge_insecure_poll: bool
   log_level: "list(DEBUG|INFO|WARN|ERROR)"
-
 stage: stable

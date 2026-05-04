@@ -1,8 +1,11 @@
-ARG BUILD_FROM=portainer/portainer-ee:sts
-FROM portainer/portainer-ee:sts AS portainer_src
+FROM portainer/portainer-ee:sts
 
-FROM $BUILD_FROM
-COPY --from=portainer_src /portainer /portainer
-COPY --from=portainer_src /public /public
-COPY run.sh /run.sh
+LABEL \
+  io.hass.version="1.0.0" \
+  io.hass.type="app" \
+  io.hass.arch="aarch64|amd64"
+
+COPY run.sh /
 RUN chmod a+x /run.sh
+
+CMD ["/run.sh"]

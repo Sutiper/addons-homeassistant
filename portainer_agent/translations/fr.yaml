@@ -1,16 +1,13 @@
 configuration:
-  portainer_url:
-    name: URL du serveur Portainer
-    description: URL HTTPS de ton instance Portainer distante (ex. https://portainer.peda.ovh)
   edge_key:
     name: Clé Edge
     description: Clé Edge générée par Portainer lors de la création de l'environnement.
   edge_id:
     name: Identifiant Edge
-    description: Identifiant unique de cet environnement (ex. homeassistant-pi5).
+    description: Identifiant unique de cet environnement (ex. homeassistant-rpi5).
   edge_insecure_poll:
     name: Désactiver la vérification TLS
-    description: Autorise les connexions sans vérification du certificat TLS. Déconseillé.
+    description: Autorise les connexions sans vérification du certificat TLS.
   log_level:
     name: Niveau de log
-    description: Verbosité des logs de l'agent (DEBUG, INFO, WARN, ERROR).
+    description: Verbosité des logs (DEBUG, INFO, WARN, ERROR).

@@ -1,40 +1,38 @@
-#!/usr/bin/with-contenv bashio
+#!/bin/sh
 
-bashio::log.info "Démarrage de Portainer Edge Agent..."
+CONFIG=/data/options.json
 
-PORTAINER_URL=$(bashio::config 'portainer_url')
-EDGE_KEY=$(bashio::config 'edge_key')
-EDGE_ID=$(bashio::config 'edge_id')
-EDGE_INSECURE_POLL=$(bashio::config 'edge_insecure_poll')
-LOG_LEVEL=$(bashio::config 'log_level')
+EDGE_KEY=$(jq -r '.edge_key' "$CONFIG")
+EDGE_ID=$(jq -r '.edge_id' "$CONFIG")
+EDGE_INSECURE_POLL=$(jq -r '.edge_insecure_poll' "$CONFIG")
+LOG_LEVEL=$(jq -r '.log_level' "$CONFIG")
 
-if bashio::var.is_empty "${EDGE_KEY}"; then
-  bashio::log.fatal "La clé Edge (edge_key) est obligatoire !"
-  bashio::log.fatal "Génère-la depuis Portainer > Environments > Add Environment > Edge Agent Standard."
+if [ -z "$EDGE_KEY" ] || [ "$EDGE_KEY" = "null" ] || [ "$EDGE_KEY" = "" ]; then
+  echo "ERREUR: edge_key est obligatoire."
+  echo "Génère-la dans Portainer > Environments > Add > Edge Agent Standard."
   exit 1
 fi
 
-if bashio::var.is_empty "${EDGE_ID}"; then
-  bashio::log.fatal "L'identifiant Edge (edge_id) est obligatoire !"
-  bashio::log.fatal "Renseigne un identifiant unique (ex: homeassistant-pi5)."
+if [ -z "$EDGE_ID" ] || [ "$EDGE_ID" = "null" ] || [ "$EDGE_ID" = "" ]; then
+  echo "ERREUR: edge_id est obligatoire."
+  echo "Choisis un identifiant unique (ex: homeassistant-rpi5)."
   exit 1
 fi
 
 export EDGE=1
-export EDGE_KEY="${EDGE_KEY}"
-export EDGE_ID="${EDGE_ID}"
-export AGENT_CLUSTER_ADDR=""
-export LOG_LEVEL="${LOG_LEVEL}"
+export EDGE_KEY="$EDGE_KEY"
+export EDGE_ID="$EDGE_ID"
+export LOG_LEVEL="$LOG_LEVEL"
 
-if bashio::var.true "${EDGE_INSECURE_POLL}"; then
+if [ "$EDGE_INSECURE_POLL" = "true" ]; then
   export EDGE_INSECURE_POLL=1
-  bashio::log.warning "Mode insecure poll activé — déconseillé en production."
+  echo "ATTENTION: Mode insecure poll activé."
 else
   export EDGE_INSECURE_POLL=0
 fi
 
-bashio::log.info "Connexion vers : ${PORTAINER_URL}"
-bashio::log.info "Edge ID       : ${EDGE_ID}"
-bashio::log.info "Log level     : ${LOG_LEVEL}"
+echo "Démarrage Portainer Edge Agent..."
+echo "Edge ID    : $EDGE_ID"
+echo "Log level  : $LOG_LEVEL"
 
 exec /agent
