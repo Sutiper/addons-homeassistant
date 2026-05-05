@@ -2,7 +2,7 @@ name: "Portainer Business Edition"
 description: >-
   Portainer Business Edition (EE) — Interface de gestion Docker complète
   avec support Edge Agent, stacks, et gestion multi-environnement.
-version: "1.0.0"
+version: "1.0.1"
 slug: "portainer_ee"
 url: "https://www.portainer.io/"
 arch:

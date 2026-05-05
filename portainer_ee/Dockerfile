@@ -6,7 +6,7 @@ FROM portainer/portainer-ee:sts AS portainer_src
 FROM ghcr.io/home-assistant/base:latest
 
 LABEL \
-  io.hass.version="1.0.0" \
+  io.hass.version="1.0.1" \
   io.hass.type="app" \
   io.hass.arch="aarch64|amd64"
 
