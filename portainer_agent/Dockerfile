@@ -1,5 +1,5 @@
 # Stage 1 : image officielle Portainer Agent (basée sur scratch)
-FROM portainer/agent:latest AS agent_src
+FROM portainer/agent:sts AS agent_src
 
 # Stage 2 : image de base HA (Alpine + bashio + shell)
 FROM ghcr.io/home-assistant/base:latest
