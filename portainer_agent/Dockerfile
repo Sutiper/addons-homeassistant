@@ -5,9 +5,13 @@ FROM portainer/agent:latest AS agent_src
 FROM ghcr.io/home-assistant/base:latest
 
 LABEL \
-  io.hass.version="1.0.1" \
+  io.hass.version="1.0.0" \
   io.hass.type="app" \
   io.hass.arch="aarch64|amd64"
+
+# tzdata requis : le binaire Go de l'agent lit les timezones depuis le filesystem
+# Sans ce paquet, Portainer renvoie "unable to load location: unknown time zone Europe/Paris"
+RUN apk add --no-cache tzdata
 
 # Copie du répertoire /app qui contient le binaire agent
 # (l'image portainer/agent utilise WorkingDir=/app avec entrypoint ./agent)
