@@ -1,3 +1,7 @@
+## 1.0.1 — 2026-05-05
+
+- Mise à jour automatique Portainer Agent
+
 # Changelog
 
 ## 1.0.0
