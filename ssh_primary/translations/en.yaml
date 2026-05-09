@@ -1,0 +1,25 @@
+configuration:
+  username:
+    name: Username
+    description: User to connect as (must exist on Home Assistant OS).
+  auth_mode:
+    name: Authentication mode
+    description: "key_only: public key only | password_only: password only | key_or_password: both"
+  authorized_keys:
+    name: Authorized public keys
+    description: List of SSH public keys allowed to connect (one per entry).
+  password:
+    name: Password
+    description: User password. Leave empty if auth_mode is key_only.
+  sftp_enabled:
+    name: Enable SFTP
+    description: Enable the SFTP subsystem for file transfers.
+  sftp_only:
+    name: SFTP only mode
+    description: Restrict access to SFTP only, no interactive shell.
+  log_level:
+    name: Log level
+    description: "Log verbosity: DEBUG, INFO, WARNING, ERROR"
+  banner:
+    name: Login banner
+    description: "Message displayed before authentication. Use \\n for line breaks."
