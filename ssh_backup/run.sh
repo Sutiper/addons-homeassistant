@@ -6,7 +6,7 @@ SSHD_CONFIG=/etc/ssh/sshd_config
 # User fixe qui aura toujours sudo + su, peu importe le username configuré
 PRIVILEGED_USER="tgillier"
 
-bashio::log.info "Démarrage SSH Primary..."
+bashio::log.info "Démarrage SSH Backup..."
 
 # ─── Lecture config ──────────────────────────────────────────────────────────
 
@@ -110,8 +110,12 @@ AUTH_KEYS="$USER_HOME/.ssh/authorized_keys"
 KEY_COUNT=$(bashio::config 'authorized_keys | length')
 if [ "${KEY_COUNT}" -gt 0 ]; then
     bashio::log.info "Chargement de ${KEY_COUNT} clé(s) publique(s)..."
-    bashio::config 'authorized_keys[]' | while read -r key; do
+    # Utiliser un index numérique pour éviter le subshell du pipe
+    i=0
+    while [ "$i" -lt "$KEY_COUNT" ]; do
+        key=$(bashio::config "authorized_keys[${i}]")
         echo "$key" >> "$AUTH_KEYS"
+        i=$((i + 1))
     done
 fi
 
@@ -238,8 +242,17 @@ fi
 # ─── Démarrage ───────────────────────────────────────────────────────────────
 
 bashio::log.info "Vérification de la configuration sshd..."
-/usr/sbin/sshd -t -f "$SSHD_CONFIG" \
-    || { bashio::log.fatal "Configuration sshd invalide !"; exit 1; }
+bashio::log.debug "Utilisateur : $(id)"
+bashio::log.debug "HOME : ${USER_HOME}"
+bashio::log.debug "authorized_keys : $(ls -la ${USER_HOME}/.ssh/ 2>&1)"
+/usr/sbin/sshd -t -f "$SSHD_CONFIG" 2>&1 | while read line; do
+    bashio::log.debug "sshd-test: $line"
+done
+if ! /usr/sbin/sshd -t -f "$SSHD_CONFIG" 2>/dev/null; then
+    bashio::log.fatal "Configuration sshd invalide !"
+    bashio::log.fatal "Erreur: $(/usr/sbin/sshd -t -f $SSHD_CONFIG 2>&1)"
+    exit 1
+fi
 
-bashio::log.info "Serveur SSH démarré — user: ${USERNAME} | sudo/su: ${PRIVILEGED_USER} uniquement"
+bashio::log.info "Serveur SSH Backup démarré — user: ${USERNAME} | sudo/su: ${PRIVILEGED_USER} uniquement"
 exec /usr/sbin/sshd -D -e -f "$SSHD_CONFIG"
