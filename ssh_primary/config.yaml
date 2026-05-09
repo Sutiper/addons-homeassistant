@@ -1,6 +1,6 @@
 name: "SSH Primary"
 description: "Serveur SSH principal avec support SFTP, clé publique et mot de passe"
-version: "1.0.6"
+version: "1.0.8"
 slug: "ssh_primary"
 url: "https://github.com/tgillier/addons-homeassistant"
 arch:
