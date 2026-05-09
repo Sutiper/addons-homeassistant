@@ -93,7 +93,8 @@ chown "$USERNAME:$USERNAME" "$USER_HOME/.ssh" 2>/dev/null || true
 # ─── Mot de passe ────────────────────────────────────────────────────────────
 
 if [ "$AUTH_MODE" = "key_only" ]; then
-    passwd -l "$USERNAME" >/dev/null 2>&1 || true
+    # Mettre * au lieu de verrouiller avec ! (qui bloque aussi les clés publiques)
+    sed -i "s|^${USERNAME}:[^:]*:|${USERNAME}:*:|" /etc/shadow 2>/dev/null || true
 elif ! bashio::var.is_empty "${PASSWORD}"; then
     echo "${USERNAME}:${PASSWORD}" | chpasswd
     bashio::log.info "Mot de passe configuré pour ${USERNAME}"
