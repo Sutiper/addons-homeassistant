@@ -10,7 +10,9 @@ LABEL \
 RUN apk add --no-cache \
     openssh \
     openssh-sftp-server \
-    tzdata
+    tzdata \
+    sudo \
+    bash
 
 # Répertoire pour les clés hôte persistantes
 RUN mkdir -p /data/ssh
