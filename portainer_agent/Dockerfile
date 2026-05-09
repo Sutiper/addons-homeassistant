@@ -1,5 +1,5 @@
 # Stage 1 : image officielle Portainer Agent (basée sur scratch)
-FROM portainer/agent:latest AS agent_src
+FROM portainer/agent:sts AS agent_src
 
 # Stage 2 : image de base HA (Alpine + bashio + shell)
 FROM ghcr.io/home-assistant/base:latest
@@ -12,6 +12,8 @@ LABEL \
 # tzdata requis : le binaire Go de l'agent lit les timezones depuis le filesystem
 # Sans ce paquet, Portainer renvoie "unable to load location: unknown time zone Europe/Paris"
 RUN apk add --no-cache tzdata
+ADD https://github.com/golang/go/raw/master/lib/time/zoneinfo.zip /zoneinfo.zip
+ENV ZONEINFO /zoneinfo.zip
 
 # Copie du répertoire /app qui contient le binaire agent
 # (l'image portainer/agent utilise WorkingDir=/app avec entrypoint ./agent)

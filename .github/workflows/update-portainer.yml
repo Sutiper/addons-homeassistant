@@ -76,7 +76,7 @@ jobs:
       - name: Get Portainer Agent latest digest
         id: agent_remote
         run: |
-          DIGEST=$(curl -s "https://hub.docker.com/v2/repositories/portainer/agent/tags/latest" \
+          DIGEST=$(curl -s "https://hub.docker.com/v2/repositories/portainer/agent/tags/sts" \
             | jq -r '.digest' | cut -c8-15)
           echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
           echo "Agent digest actuel : ${DIGEST}"
