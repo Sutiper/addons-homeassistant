@@ -2,6 +2,7 @@
 
 SSH_DIR=/data/ssh
 SSHD_CONFIG=/etc/ssh/sshd_config
+SUDOERS_FILE=/etc/sudoers.d/ha-ssh
 
 bashio::log.info "Démarrage SSH Primary..."
 
@@ -30,16 +31,26 @@ for type in rsa ecdsa ed25519; do
     fi
 done
 
-# ─── Utilisateur ─────────────────────────────────────────────────────────────
+# ─── Utilisateur et sudo ─────────────────────────────────────────────────────
+
+# Nettoyer les anciens sudoers de l'add-on
+> "$SUDOERS_FILE"
 
 if [ "$USERNAME" = "root" ]; then
     USER_HOME="/root"
+    bashio::log.info "Connexion en root — accès total"
 else
+    # Créer le user s'il n'existe pas
     if ! id "$USERNAME" >/dev/null 2>&1; then
         bashio::log.info "Création utilisateur ${USERNAME}..."
         adduser -D -s /bin/bash "$USERNAME"
     fi
     USER_HOME="/home/$USERNAME"
+
+    # Donner les droits sudo SANS mot de passe
+    echo "${USERNAME} ALL=(ALL) NOPASSWD: ALL" > "$SUDOERS_FILE"
+    chmod 440 "$SUDOERS_FILE"
+    bashio::log.info "Droits sudo accordés à ${USERNAME} (sans mot de passe)"
 fi
 
 mkdir -p "$USER_HOME/.ssh"
@@ -151,17 +162,6 @@ if ! bashio::var.is_empty "${BANNER}"; then
     echo "Banner /etc/ssh/banner" >> "$SSHD_CONFIG"
     bashio::log.info "Bannière configurée"
 fi
-
-# ─── Dossiers HA accessibles ─────────────────────────────────────────────────
-
-bashio::log.info "Dossiers Home Assistant accessibles :"
-bashio::log.info "  /config   → Configuration HA"
-bashio::log.info "  /data     → Données de l'add-on"
-bashio::log.info "  /share    → Dossier partagé"
-bashio::log.info "  /ssl      → Certificats SSL (lecture seule)"
-bashio::log.info "  /backup   → Sauvegardes"
-bashio::log.info "  /media    → Médias"
-bashio::log.info "  /addons   → Add-ons (lecture seule)"
 
 # ─── Démarrage ───────────────────────────────────────────────────────────────
 
