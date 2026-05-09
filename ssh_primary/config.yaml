@@ -1,0 +1,52 @@
+name: "SSH Primary"
+description: "Serveur SSH principal avec support SFTP, clé publique et mot de passe"
+version: "1.0.1"
+slug: "ssh_primary"
+url: "https://github.com/tgillier/addons-homeassistant"
+arch:
+  - amd64
+  - aarch64
+  - armv7
+startup: services
+boot: auto
+init: false
+
+# Accès à l'OS host pour se connecter aux vrais users HA
+host_network: false
+privileged:
+  - SYS_ADMIN
+  - SYS_PTRACE
+
+ports:
+  22/tcp: 22222
+ports_description:
+  22/tcp: "Port SSH principal"
+
+map:
+  - type: data
+    read_only: false
+  - type: ssl
+    read_only: true
+
+options:
+  username: "root"
+  authorized_keys: []
+  password: ""
+  auth_mode: "key_or_password"
+  sftp_enabled: true
+  sftp_only: false
+  log_level: "INFO"
+  banner: ""
+
+schema:
+  username: str
+  authorized_keys:
+    - str
+  password: password
+  auth_mode: "list(key_only|password_only|key_or_password)"
+  sftp_enabled: bool
+  sftp_only: bool
+  log_level: "list(DEBUG|INFO|WARNING|ERROR)"
+  banner: str
+
+stage: stable
