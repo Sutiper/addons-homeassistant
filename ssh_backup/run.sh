@@ -19,7 +19,11 @@ LOG_LEVEL=$(bashio::config 'log_level')
 BANNER=$(bashio::config 'banner')
 
 bashio::var.is_empty "${USERNAME}" && USERNAME="root"
+<<<<<<< HEAD
 bashio::log.info "Utilisateur SSH : ${USERNAME} | Auth : ${AUTH_MODE}"
+=======
+bashio::log.info "Utilisateur autorisé : ${USERNAME} | Auth : ${AUTH_MODE}"
+>>>>>>> 7999757ba1bfc6b86e3111353f57fa3f2d2bdd05
 
 # ─── Clés hôte persistantes ──────────────────────────────────────────────────
 
@@ -32,6 +36,7 @@ for type in rsa ecdsa ed25519; do
     fi
 done
 
+<<<<<<< HEAD
 # ─── Sécurité sudo et su ─────────────────────────────────────────────────────
 # Seul PRIVILEGED_USER a le droit à sudo et su
 # Peu importe le username configuré dans l'add-on
@@ -67,23 +72,69 @@ chmod 440 /etc/sudoers.d/ha-ssh-wheel
 bashio::log.info "sudo et su réservés uniquement à : ${PRIVILEGED_USER}"
 
 # ─── Utilisateur SSH configuré ───────────────────────────────────────────────
+=======
+# ─── Nettoyage sécurité : vider le groupe wheel ───────────────────────────────
+# Sur Alpine, wheel est le groupe sudo
+# On retire TOUS les users du groupe wheel avant d'ajouter uniquement le bon
+
+bashio::log.info "Nettoyage du groupe wheel..."
+
+# Récupérer les membres actuels de wheel et les retirer tous
+WHEEL_MEMBERS=$(grep '^wheel:' /etc/group | cut -d: -f4 | tr ',' ' ')
+for member in $WHEEL_MEMBERS; do
+    if [ -n "$member" ]; then
+        delgroup "$member" wheel 2>/dev/null || true
+        bashio::log.info "Retiré du groupe wheel : ${member}"
+    fi
+done
+
+# Réinitialiser les sudoers de l'add-on
+rm -f /etc/sudoers.d/ha-ssh-*
+
+# Bloquer su pour tous par défaut (chmod o-x)
+chmod 4750 /bin/su
+chown root:wheel /bin/su
+
+# ─── Utilisateur configuré ───────────────────────────────────────────────────
+>>>>>>> 7999757ba1bfc6b86e3111353f57fa3f2d2bdd05
 
 if [ "$USERNAME" = "root" ]; then
     USER_HOME="/root"
     bashio::log.info "Mode root — accès total"
+<<<<<<< HEAD
 elif [ "$USERNAME" = "$PRIVILEGED_USER" ]; then
     USER_HOME="/home/$USERNAME"
     bashio::log.info "${USERNAME} = utilisateur privilégié — sudo + su disponibles"
+=======
+>>>>>>> 7999757ba1bfc6b86e3111353f57fa3f2d2bdd05
 else
     # User non privilégié : créer sans wheel
     if ! id "$USERNAME" >/dev/null 2>&1; then
+<<<<<<< HEAD
         bashio::log.info "Création utilisateur non privilégié : ${USERNAME}..."
+=======
+        bashio::log.info "Création utilisateur ${USERNAME}..."
+        # -D = pas de mot de passe, -H = pas de home par défaut
+>>>>>>> 7999757ba1bfc6b86e3111353f57fa3f2d2bdd05
         adduser -D -s /bin/bash "$USERNAME"
     fi
     # S'assurer qu'il n'est pas dans wheel
     delgroup "$USERNAME" wheel 2>/dev/null || true
     USER_HOME="/home/$USERNAME"
+<<<<<<< HEAD
     bashio::log.info "${USERNAME} n'a pas les droits sudo/su"
+=======
+
+    # Ajouter UNIQUEMENT ce user au groupe wheel
+    addgroup "$USERNAME" wheel
+    bashio::log.info "${USERNAME} ajouté au groupe wheel (sudo + su)"
+
+    # Règle sudoers : wheel sans mot de passe
+    cat > /etc/sudoers.d/ha-ssh-wheel << 'EOF'
+%wheel ALL=(ALL) NOPASSWD: ALL
+EOF
+    chmod 440 /etc/sudoers.d/ha-ssh-wheel
+>>>>>>> 7999757ba1bfc6b86e3111353f57fa3f2d2bdd05
 fi
 
 mkdir -p "$USER_HOME/.ssh"

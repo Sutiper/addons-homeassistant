@@ -1,6 +1,10 @@
 name: "SSH Backup"
 description: "Serveur SSH de secours avec support SFTP, clé publique et mot de passe"
+<<<<<<< HEAD
 version: "1.0.8"
+=======
+version: "1.0.7"
+>>>>>>> 7999757ba1bfc6b86e3111353f57fa3f2d2bdd05
 slug: "ssh_backup"
 url: "https://github.com/tgillier/addons-homeassistant"
 arch:
