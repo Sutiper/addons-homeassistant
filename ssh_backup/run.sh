@@ -16,7 +16,6 @@ LOG_LEVEL=$(bashio::config 'log_level')
 BANNER=$(bashio::config 'banner')
 
 bashio::var.is_empty "${USERNAME}" && USERNAME="root"
-
 bashio::log.info "Utilisateur : ${USERNAME} | Auth : ${AUTH_MODE}"
 
 # ─── Clés hôte persistantes ──────────────────────────────────────────────────
@@ -30,27 +29,14 @@ for type in rsa ecdsa ed25519; do
     fi
 done
 
-# ─── Réinitialiser tous les sudoers de l'add-on ──────────────────────────────
+# ─── Utilisateur, sudo et su ──────────────────────────────────────────────────
 
-# Supprimer toutes les règles sudo précédentes
+# Supprimer toutes les règles sudo précédentes de l'add-on
 rm -f /etc/sudoers.d/ha-ssh-*
-
-# Bloquer su pour tous par défaut
-# On remplace /bin/su par un wrapper qui refuse tout
-cat > /usr/local/bin/su << 'SUEOF'
-#!/bin/sh
-echo "su: accès refusé"
-exit 1
-SUEOF
-chmod 755 /usr/local/bin/su
-
-# ─── Utilisateur et sudo ─────────────────────────────────────────────────────
 
 if [ "$USERNAME" = "root" ]; then
     USER_HOME="/root"
     bashio::log.info "Connexion en root — accès total"
-    # Restaurer su pour root
-    rm -f /usr/local/bin/su
 else
     # Créer le user s'il n'existe pas
     if ! id "$USERNAME" >/dev/null 2>&1; then
@@ -59,16 +45,21 @@ else
     fi
     USER_HOME="/home/$USERNAME"
 
-    # Sudo SANS mot de passe uniquement pour ce user
-    SUDOERS_FILE="/etc/sudoers.d/ha-ssh-${USERNAME}"
-    echo "${USERNAME} ALL=(ALL) NOPASSWD: ALL" > "$SUDOERS_FILE"
-    chmod 440 "$SUDOERS_FILE"
-    bashio::log.info "Droits sudo accordés uniquement à ${USERNAME}"
+    # Ajouter le user au groupe wheel (donne accès à sudo)
+    addgroup "$USERNAME" wheel 2>/dev/null || true
 
-    # Créer les autres users éventuellement présents sans sudo
-    # Vérifier que visudo est cohérent
-    visudo -c -f "$SUDOERS_FILE" >/dev/null 2>&1 \
-        || { bashio::log.fatal "Erreur dans le fichier sudoers !"; exit 1; }
+    # Sudo NOPASSWD uniquement pour le groupe wheel
+    cat > /etc/sudoers.d/ha-ssh-wheel << 'EOF'
+%wheel ALL=(ALL) NOPASSWD: ALL
+EOF
+    chmod 440 /etc/sudoers.d/ha-ssh-wheel
+
+    # Permissions sur su : seul root et wheel peuvent l'utiliser
+    # Sur Alpine, su est dans /bin/su — on restreint via groupe
+    chown root:wheel /bin/su
+    chmod 4750 /bin/su   # setuid root, executable seulement par wheel
+
+    bashio::log.info "sudo et su accordés au groupe wheel (${USERNAME})"
 fi
 
 mkdir -p "$USER_HOME/.ssh"
@@ -108,6 +99,59 @@ if [ "$AUTH_MODE" = "key_only" ] && [ "${KEY_COUNT}" -eq 0 ]; then
     exit 1
 fi
 
+# ─── MOTD style Ubuntu ───────────────────────────────────────────────────────
+
+cat > /etc/profile.d/motd.sh << 'MOTDEOF'
+#!/bin/sh
+# MOTD dynamique style Ubuntu
+
+HOSTNAME=$(hostname)
+KERNEL=$(uname -r)
+UPTIME=$(uptime -p 2>/dev/null || uptime)
+DATE=$(date '+%Y-%m-%d %H:%M:%S %Z')
+
+# CPU
+CPU_MODEL=$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2 | sed 's/^ //' || echo "N/A")
+CPU_CORES=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo "?")
+
+# RAM
+MEM_TOTAL=$(awk '/MemTotal/ {printf "%.0f", $2/1024}' /proc/meminfo 2>/dev/null || echo "?")
+MEM_AVAIL=$(awk '/MemAvailable/ {printf "%.0f", $2/1024}' /proc/meminfo 2>/dev/null || echo "?")
+MEM_USED=$((MEM_TOTAL - MEM_AVAIL))
+
+# Disque /config
+DISK=$(df -h /config 2>/dev/null | awk 'NR==2 {print $3 "/" $2 " (" $5 " utilisé)"}' || echo "N/A")
+
+# IP
+IP=$(hostname -i 2>/dev/null | awk '{print $1}' || echo "N/A")
+
+# Charge système
+LOAD=$(cat /proc/loadavg 2>/dev/null | awk '{print $1", "$2", "$3}' || echo "N/A")
+
+echo ""
+echo " ┌─────────────────────────────────────────────────────┐"
+printf " │  🏠  Home Assistant — %-30s│\n" "$HOSTNAME"
+echo " └─────────────────────────────────────────────────────┘"
+echo ""
+echo "  Système      : Linux $KERNEL"
+echo "  Date         : $DATE"
+echo "  Uptime       : $UPTIME"
+echo "  IP locale    : $IP"
+echo ""
+echo "  CPU          : $CPU_MODEL ($CPU_CORES cœurs)"
+echo "  Charge       : $LOAD"
+echo "  RAM          : ${MEM_USED} Mo / ${MEM_TOTAL} Mo utilisés"
+echo "  Disque /config : $DISK"
+echo ""
+echo "  Dossiers disponibles :"
+echo "    /config  /share  /ssl  /backup  /media  /addons"
+echo ""
+MOTDEOF
+chmod +x /etc/profile.d/motd.sh
+
+# Désactiver l'ancien /etc/motd statique
+> /etc/motd
+
 # ─── sshd_config ─────────────────────────────────────────────────────────────
 
 case "$LOG_LEVEL" in
@@ -126,7 +170,6 @@ bashio::var.true "${SFTP_ENABLED}" \
     && SFTP_LINE="Subsystem sftp /usr/lib/ssh/sftp-server" \
     || SFTP_LINE="# SFTP désactivé"
 
-# Restreindre la connexion SSH au seul username configuré
 cat > "$SSHD_CONFIG" << EOF
 Port 22
 AddressFamily any
@@ -136,7 +179,7 @@ HostKey $SSH_DIR/ssh_host_rsa_key
 HostKey $SSH_DIR/ssh_host_ecdsa_key
 HostKey $SSH_DIR/ssh_host_ed25519_key
 
-# Seul l'utilisateur configuré peut se connecter
+# Seul le username configuré peut se connecter
 AllowUsers $USERNAME
 
 PermitRootLogin $([ "$USERNAME" = "root" ] && echo "yes" || echo "no")
@@ -162,6 +205,9 @@ TCPKeepAlive yes
 ClientAliveInterval 120
 ClientAliveCountMax 3
 
+# Afficher le MOTD via profile.d
+PrintMotd yes
+
 $SFTP_LINE
 EOF
 
@@ -182,7 +228,6 @@ fi
 if ! bashio::var.is_empty "${BANNER}"; then
     printf "%b\n" "$BANNER" > /etc/ssh/banner
     echo "Banner /etc/ssh/banner" >> "$SSHD_CONFIG"
-    bashio::log.info "Bannière configurée"
 fi
 
 # ─── Démarrage ───────────────────────────────────────────────────────────────
