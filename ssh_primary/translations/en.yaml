@@ -1,0 +1,31 @@
+configuration:
+  auth_mode:
+    name: Authentication mode
+    description: "key_only: public key only | password_only: password only | key_or_password: both"
+  authorized_keys:
+    name: Authorized public keys
+    description: List of SSH public keys allowed to connect.
+  password:
+    name: Password
+    description: Password for the hassio user.
+  allow_root_login:
+    name: Allow root login
+    description: Allow direct root login. Not recommended.
+  allow_tcp_forwarding:
+    name: Allow TCP forwarding
+    description: Allow TCP port forwarding.
+  allow_agent_forwarding:
+    name: Allow agent forwarding
+    description: Allow SSH agent forwarding.
+  sftp_enabled:
+    name: Enable SFTP
+    description: Enable the SFTP subsystem for file transfers.
+  sftp_only:
+    name: SFTP only mode
+    description: Restrict access to SFTP only, no interactive shell.
+  log_level:
+    name: Log level
+    description: "Log verbosity: DEBUG, INFO, WARNING, ERROR"
+  banner:
+    name: Login banner
+    description: Message displayed before authentication.
