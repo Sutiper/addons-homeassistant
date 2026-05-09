@@ -2,7 +2,24 @@
 
 Serveur SSH principal pour Home Assistant avec support SFTP complet.
 
+## Dossiers accessibles
+
+Une fois connecté, tu as accès aux dossiers suivants :
+
+| Chemin | Contenu | Accès |
+|--------|---------|-------|
+| `/config` | Configuration Home Assistant (configuration.yaml, automations...) | Lecture/Écriture |
+| `/data` | Données de l'add-on | Lecture/Écriture |
+| `/share` | Dossier partagé entre add-ons | Lecture/Écriture |
+| `/ssl` | Certificats SSL/TLS | Lecture seule |
+| `/backup` | Sauvegardes HA | Lecture/Écriture |
+| `/media` | Médias | Lecture/Écriture |
+| `/addons` | Add-ons installés | Lecture seule |
+
 ## Configuration
+
+### `username`
+Nom d'utilisateur pour la connexion SSH. Par défaut `root`.
 
 ### `auth_mode`
 Mode d'authentification :
@@ -11,51 +28,32 @@ Mode d'authentification :
 - `key_or_password` — les deux acceptés
 
 ### `authorized_keys`
-Liste des clés publiques autorisées à se connecter. Une clé par entrée.
-
-Exemple :
-```
-ssh-ed25519 AAAA... tom@machine
-ssh-rsa AAAA... backup-key
-```
+Liste des clés publiques autorisées. Une clé par entrée.
 
 ### `password`
-Mot de passe pour l'utilisateur `hassio`. Laissez vide si `auth_mode: key_only`.
-
-### `allow_root_login`
-Autorise la connexion en tant que root. **Non recommandé.**
-
-### `allow_tcp_forwarding`
-Autorise le forwarding de ports TCP (`-L`, `-R`). Désactivé par défaut.
-
-### `allow_agent_forwarding`
-Autorise le forwarding de l'agent SSH. Désactivé par défaut.
+Mot de passe. Laissez vide si `auth_mode: key_only`.
 
 ### `sftp_enabled`
 Active le sous-système SFTP. Activé par défaut.
 
 ### `sftp_only`
-Restreint l'utilisateur au SFTP uniquement, sans accès shell.
-Le répertoire personnel devient `/home/hassio/data/`.
+Restreint l'accès au SFTP uniquement, sans shell interactif.
 
 ### `log_level`
-Niveau de verbosité des logs : `DEBUG`, `INFO`, `WARNING`, `ERROR`.
+Niveau de verbosité : `DEBUG`, `INFO`, `WARNING`, `ERROR`.
 
 ### `banner`
-Message affiché avant la connexion. Laissez vide pour désactiver.
+Message affiché avant la connexion. Utiliser `\n` pour les retours à la ligne.
 
 ## Connexion
 
 ```bash
-# Par clé publique
-ssh -i ~/.ssh/ma_cle -p 22222 hassio@homeassistant.local
+# SSH
+ssh -p 22222 root@homeassistant.local
 
 # SFTP
-sftp -i ~/.ssh/ma_cle -P 22222 hassio@homeassistant.local
+sftp -P 22222 root@homeassistant.local
+
+# Par clé publique
+ssh -i ~/.ssh/ma_cle -p 22222 root@homeassistant.local
 ```
-
-## Notes
-
-- Les clés hôte SSH sont persistantes et stockées dans `/data/ssh/`
-- Le port par défaut est **22222** (modifiable dans l'onglet Réseau)
-- Pour un accès depuis internet, tunneler via FRP sur le VPS

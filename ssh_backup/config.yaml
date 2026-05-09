@@ -1,6 +1,6 @@
 name: "SSH Backup"
 description: "Serveur SSH de secours avec support SFTP, clé publique et mot de passe"
-version: "1.0.2"
+version: "1.0.3"
 slug: "ssh_backup"
 url: "https://github.com/tgillier/addons-homeassistant"
 arch:
@@ -11,16 +11,26 @@ startup: services
 boot: auto
 init: false
 
-full_access: true
-
 ports:
   22/tcp: 22223
 ports_description:
   22/tcp: "Port SSH de secours"
 
 map:
+  - type: config
+    read_only: false
   - type: data
     read_only: false
+  - type: share
+    read_only: false
+  - type: ssl
+    read_only: true
+  - type: backup
+    read_only: false
+  - type: media
+    read_only: false
+  - type: addons
+    read_only: true
 
 options:
   username: "root"

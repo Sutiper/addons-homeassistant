@@ -1,6 +1,6 @@
 name: "SSH Primary"
 description: "Serveur SSH principal avec support SFTP, clé publique et mot de passe"
-version: "1.0.2"
+version: "1.0.3"
 slug: "ssh_primary"
 url: "https://github.com/tgillier/addons-homeassistant"
 arch:
@@ -11,17 +11,27 @@ startup: services
 boot: auto
 init: false
 
-# Accès complet pour nsenter vers l'OS host
-full_access: true
-
 ports:
   22/tcp: 22222
 ports_description:
   22/tcp: "Port SSH principal"
 
+# Accès aux dossiers Home Assistant
 map:
+  - type: config
+    read_only: false
   - type: data
     read_only: false
+  - type: share
+    read_only: false
+  - type: ssl
+    read_only: true
+  - type: backup
+    read_only: false
+  - type: media
+    read_only: false
+  - type: addons
+    read_only: true
 
 options:
   username: "root"

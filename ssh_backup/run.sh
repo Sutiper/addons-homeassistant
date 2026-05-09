@@ -30,16 +30,16 @@ for type in rsa ecdsa ed25519; do
     fi
 done
 
-# ─── Utilisateur local pour sshd ─────────────────────────────────────────────
+# ─── Utilisateur ─────────────────────────────────────────────────────────────
 
-if [ "$USERNAME" != "root" ]; then
+if [ "$USERNAME" = "root" ]; then
+    USER_HOME="/root"
+else
     if ! id "$USERNAME" >/dev/null 2>&1; then
-        bashio::log.info "Création utilisateur local ${USERNAME}..."
-        adduser -D -s /bin/sh "$USERNAME"
+        bashio::log.info "Création utilisateur ${USERNAME}..."
+        adduser -D -s /bin/bash "$USERNAME"
     fi
     USER_HOME="/home/$USERNAME"
-else
-    USER_HOME="/root"
 fi
 
 mkdir -p "$USER_HOME/.ssh"
@@ -78,29 +78,6 @@ if [ "$AUTH_MODE" = "key_only" ] && [ "${KEY_COUNT}" -eq 0 ]; then
     bashio::log.fatal "auth_mode=key_only mais aucune clé publique configurée !"
     exit 1
 fi
-
-# ─── Shell nsenter vers l'OS host ────────────────────────────────────────────
-# Trouver le PID du init host (pid 1 dans le namespace host)
-# Dans un conteneur HA, /proc/1 est le PID du conteneur.
-# On utilise nsenter avec --target 1 et tous les namespaces host.
-
-HOST_SHELL=/usr/local/bin/ha-shell
-cat > "$HOST_SHELL" << SHELL_EOF
-#!/bin/sh
-# Lance un shell dans le namespace host et su vers l'utilisateur
-exec nsenter \
-    --target 1 \
-    --mount \
-    --uts \
-    --ipc \
-    --net \
-    --pid \
-    -- \
-    /bin/login -f "$USERNAME"
-SHELL_EOF
-chmod +x "$HOST_SHELL"
-
-bashio::log.info "Shell host configuré via nsenter (user: ${USERNAME})"
 
 # ─── sshd_config ─────────────────────────────────────────────────────────────
 
@@ -155,7 +132,7 @@ ClientAliveCountMax 3
 $SFTP_LINE
 EOF
 
-# Mode SFTP only
+# Mode SFTP uniquement
 if bashio::var.true "${SFTP_ONLY}"; then
     bashio::log.info "Mode SFTP uniquement activé"
     cat >> "$SSHD_CONFIG" << EOF
@@ -164,13 +141,6 @@ Match User *
     ForceCommand internal-sftp
     AllowTcpForwarding no
     X11Forwarding no
-EOF
-else
-    # Shell normal → nsenter vers host
-    cat >> "$SSHD_CONFIG" << EOF
-
-Match User *
-    ForceCommand $HOST_SHELL
 EOF
 fi
 
@@ -181,6 +151,17 @@ if ! bashio::var.is_empty "${BANNER}"; then
     echo "Banner /etc/ssh/banner" >> "$SSHD_CONFIG"
     bashio::log.info "Bannière configurée"
 fi
+
+# ─── Dossiers HA accessibles ─────────────────────────────────────────────────
+
+bashio::log.info "Dossiers Home Assistant accessibles :"
+bashio::log.info "  /config   → Configuration HA"
+bashio::log.info "  /data     → Données de l'add-on"
+bashio::log.info "  /share    → Dossier partagé"
+bashio::log.info "  /ssl      → Certificats SSL (lecture seule)"
+bashio::log.info "  /backup   → Sauvegardes"
+bashio::log.info "  /media    → Médias"
+bashio::log.info "  /addons   → Add-ons (lecture seule)"
 
 # ─── Démarrage ───────────────────────────────────────────────────────────────
 
