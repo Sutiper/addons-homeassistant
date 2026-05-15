@@ -1,3 +1,7 @@
+## 1.0.2 — 2026-05-11
+
+- Mise à jour automatique Portainer EE (STS)
+
 ## 1.0.1 — 2026-05-05
 
 - Mise à jour automatique Portainer EE (STS)

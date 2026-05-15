@@ -2,7 +2,7 @@ name: "Portainer Edge Agent"
 description: >-
   Agent Edge Portainer (Standard) — Se connecte à un serveur Portainer distant
   pour gérer cet environnement Docker depuis une instance centralisée.
-version: "1.0.2"
+version: "1.0.3"
 slug: "portainer_agent"
 url: "https://www.portainer.io/"
 arch:
