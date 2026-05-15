@@ -1,0 +1,195 @@
+name: Auto-update addon versions
+
+on:
+  schedule:
+    # Tous les jours à 4h du matin
+    - cron: "0 4 * * *"
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MATRICE DES ADDONS
+#
+# type: docker  → surveille un digest Docker Hub et bumpe la version si changé
+# type: local   → synchronise io.hass.version dans Dockerfile avec config.yaml
+#
+# Pour type=docker :
+#   image    : image Docker Hub à surveiller (ex: portainer/portainer-ee)
+#   tag      : tag à surveiller              (ex: sts)
+#   digest_file : fichier stockant le dernier digest connu
+#
+# Pour type=local : aucun champ supplémentaire requis
+# ─────────────────────────────────────────────────────────────────────────────
+
+jobs:
+  # ── Étape 1 : construire la liste des addons à traiter ─────────────────────
+  prepare:
+    name: Prepare addon matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          MATRIX=$(cat << 'JSON'
+          {
+            "include": [
+              {
+                "addon":       "portainer_ee",
+                "type":        "docker",
+                "image":       "portainer/portainer-ee",
+                "tag":         "sts",
+                "digest_file": ".portainer_ee_digest"
+              },
+              {
+                "addon":       "portainer_agent",
+                "type":        "docker",
+                "image":       "portainer/agent",
+                "tag":         "sts",
+                "digest_file": ".portainer_agent_digest"
+              },
+              {
+                "addon": "ssh_primary",
+                "type":  "local"
+              },
+              {
+                "addon": "ssh_backup",
+                "type":  "local"
+              }
+            ]
+          }
+          JSON
+          )
+          # Compacter en une seule ligne pour l'output
+          echo "matrix=$(echo "$MATRIX" | jq -c .)" >> $GITHUB_OUTPUT
+
+  # ── Étape 2 : traiter chaque addon en parallèle ────────────────────────────
+  update-addon:
+    name: "[${{ matrix.addon }}] Check & update"
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      # Ne pas annuler les autres jobs si l'un échoue
+      fail-fast: false
+      matrix: ${{ fromJson(needs.prepare.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ── Lire la version actuelle depuis config.yaml ─────────────────────────
+      - name: Read current version from config.yaml
+        id: current
+        run: |
+          VERSION=$(grep '^version:' ${{ matrix.addon }}/config.yaml \
+            | awk '{print $2}' | tr -d '"')
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "[${{ matrix.addon }}] Version config.yaml : ${VERSION}"
+
+      # ════════════════════════════════════════════════════════════════════════
+      # TYPE : docker — surveiller un digest Docker Hub
+      # ════════════════════════════════════════════════════════════════════════
+
+      - name: "[docker] Fetch remote digest"
+        id: remote_digest
+        if: matrix.type == 'docker'
+        run: |
+          DIGEST=$(curl -s \
+            "https://hub.docker.com/v2/repositories/${{ matrix.image }}/tags/${{ matrix.tag }}" \
+            | jq -r '.digest' | cut -c8-15)
+          echo "digest=${DIGEST}" >> $GITHUB_OUTPUT
+          echo "[${{ matrix.addon }}] Digest distant : ${DIGEST}"
+
+      - name: "[docker] Read stored digest"
+        id: stored_digest
+        if: matrix.type == 'docker'
+        run: |
+          STORED=$(cat "${{ matrix.digest_file }}" 2>/dev/null || echo "")
+          echo "digest=${STORED}" >> $GITHUB_OUTPUT
+          echo "[${{ matrix.addon }}] Digest stocké  : ${STORED}"
+
+      - name: "[docker] Bump version if digest changed"
+        id: docker_changed
+        if: |
+          matrix.type == 'docker' &&
+          steps.remote_digest.outputs.digest != steps.stored_digest.outputs.digest &&
+          steps.remote_digest.outputs.digest != ''
+        run: |
+          OLD="${{ steps.current.outputs.version }}"
+          MAJOR=$(echo $OLD | cut -d. -f1)
+          MINOR=$(echo $OLD | cut -d. -f2)
+          PATCH=$(echo $OLD | cut -d. -f3)
+          NEW="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          DATE=$(date +%Y-%m-%d)
+
+          echo "[${{ matrix.addon }}] Bump : ${OLD} → ${NEW}"
+
+          # config.yaml
+          sed -i "s/^version: \"${OLD}\"/version: \"${NEW}\"/" \
+            ${{ matrix.addon }}/config.yaml
+
+          # Dockerfile — label io.hass.version
+          sed -i "s/io\.hass\.version=\"${OLD}\"/io.hass.version=\"${NEW}\"/" \
+            ${{ matrix.addon }}/Dockerfile
+
+          # CHANGELOG
+          printf "## ${NEW} — ${DATE}\n\n- Mise à jour automatique ${{ matrix.addon }} (${{ matrix.image }}:${{ matrix.tag }})\n\n" \
+            | cat - ${{ matrix.addon }}/CHANGELOG.md > /tmp/cl \
+            && mv /tmp/cl ${{ matrix.addon }}/CHANGELOG.md
+
+          # Sauvegarder le nouveau digest
+          echo "${{ steps.remote_digest.outputs.digest }}" > "${{ matrix.digest_file }}"
+
+          git add \
+            ${{ matrix.addon }}/config.yaml \
+            ${{ matrix.addon }}/Dockerfile \
+            ${{ matrix.addon }}/CHANGELOG.md \
+            "${{ matrix.digest_file }}"
+          git commit -m "chore(${{ matrix.addon }}): bump to ${NEW} (${{ matrix.image }}:${{ matrix.tag }} updated)"
+
+      # ════════════════════════════════════════════════════════════════════════
+      # TYPE : local — synchroniser io.hass.version avec config.yaml
+      # ════════════════════════════════════════════════════════════════════════
+
+      - name: "[local] Read Dockerfile label version"
+        id: dockerfile_version
+        if: matrix.type == 'local'
+        run: |
+          LABEL=$(grep 'io\.hass\.version=' ${{ matrix.addon }}/Dockerfile \
+            | grep -o '"[^"]*"' | tr -d '"' | head -1)
+          echo "version=${LABEL}" >> $GITHUB_OUTPUT
+          echo "[${{ matrix.addon }}] Version Dockerfile : ${LABEL}"
+
+      - name: "[local] Sync Dockerfile label if out of date"
+        if: |
+          matrix.type == 'local' &&
+          steps.current.outputs.version != steps.dockerfile_version.outputs.version &&
+          steps.current.outputs.version != ''
+        run: |
+          OLD_LABEL="${{ steps.dockerfile_version.outputs.version }}"
+          NEW="${{ steps.current.outputs.version }}"
+
+          echo "[${{ matrix.addon }}] Sync label : ${OLD_LABEL} → ${NEW}"
+
+          sed -i "s/io\.hass\.version=\"${OLD_LABEL}\"/io.hass.version=\"${NEW}\"/" \
+            ${{ matrix.addon }}/Dockerfile
+
+          git add ${{ matrix.addon }}/Dockerfile
+          git commit -m "chore(${{ matrix.addon }}): sync Dockerfile label to ${NEW}"
+
+      # ── Push (une seule tentative par addon, avec rebase) ──────────────────
+      - name: Push changes
+        run: |
+          git pull --rebase origin main
+          git push origin main
